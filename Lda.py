@@ -20,6 +20,7 @@ class Lda(object):
 	def topic_tfidf(self):
 		self.dictionary = corpora.Dictionary(self.texts)
 		corpus = [self.dictionary.doc2bow(text) for text in self.texts]
+		self.terms_corpus = list(self.dictionary.itervalues())
 		self.lda_model = models.ldamodel.LdaModel(corpus=corpus, id2word=self.dictionary, num_topics=self.num_topics, update_every=1, chunksize=10000, passes=1)
 
 	def train(self):
@@ -44,11 +45,16 @@ class Lda(object):
 			for j in set(data_clusters_labels[i]):
 				topic[j] = data_clusters_labels[i].count(j)
 			[labels_topic.append(j[0]) for j in sorted(topic.items(),key=operator.itemgetter(1),reverse=True)[:self.limit_labels]]
+			terms = self.lda_model.get_topic_terms(i)
+			doc = []
+			for term in terms:
+				doc.append(self.w2v.model.wv[self.terms_corpus[term[0]]])
 			self.train_data[i] = {
 				'labels':labels_topic, 
 				'tfidf':np.mean(np.asarray(data_clusters_tfidf[i]), axis=0),
 				'w2v':np.mean(np.asarray(data_clusters_w2v[i]), axis=0), 
-				'terms':self.lda_model.get_topic_terms(i)
+				'terms':terms,
+				'terms_w2v':np.mean(doc, axis=0)
 			}
 		pickle.dump(self.train_data, open('data/train_'+self.process.dataset+'.ipy', 'wb'), pickle.HIGHEST_PROTOCOL)	
 
@@ -63,8 +69,12 @@ class Lda(object):
 			tfidf = self.tfidf.tfidf[i].toarray()[0]
 			for j in self.train_data:
 				soma = 0
-				dist[j] = cosine(tfidf, self.train_data[j]['tfidf'])
-				#dist[j] = cosine(w2v[i], self.train_data[j]['w2v'])
+				#dist[j] = cosine(tfidf, self.train_data[j]['tfidf'])
+				#dist[j] = cosine(self.w2v.w2v[i], self.train_data[j]['w2v'])
+				dist[j] = cosine(self.w2v.w2v[i], self.train_data[j]['terms_w2v'])
+				#dist[j] = euclidean(tfidf, self.train_data[j]['tfidf'])
+				#dist[j] = euclidean(self.w2v.w2v[i], self.train_data[j]['w2v'])
+				#dist[j] = euclidean(self.w2v.w2v[i], self.train_data[j]['terms_w2v'])
 				for x in self.train_data[j]['terms']:
 					soma+= (tfidf[x[0]]*x[1])
 				somas[j] = soma
