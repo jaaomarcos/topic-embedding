@@ -13,17 +13,22 @@ class Lda(object):
 		self.num_topics = num_topics
 		self.p = p
 		self.limit_labels = limit_labels
-		self.texts = self.process.data[self.process.dataset]['corpus'][:int(len(self.process.data[self.process.dataset]['corpus'])*self.p)]
-		self.texts_test = self.process.data[self.process.dataset]['corpus'][int(len(self.process.data[self.process.dataset]['corpus'])*self.p):]
-		self.targets = self.process.data[self.process.dataset]['targets']
+		self.texts = self.process.data['corpus'][:int(len(self.process.data['corpus'])*self.p)]
+		self.texts_test = self.process.data['corpus'][int(len(self.process.data['corpus'])*self.p):]
+		self.targets = self.process.data['targets']
 
 	def topic_tfidf(self):
 		self.dictionary = corpora.Dictionary(self.texts)
-		corpus = [self.dictionary.doc2bow(text) for text in self.texts]
+		self.corpus = [self.dictionary.doc2bow(text) for text in self.texts]
 		self.terms_corpus = list(self.dictionary.itervalues())
-		self.lda_model = models.ldamodel.LdaModel(corpus=corpus, id2word=self.dictionary, num_topics=self.num_topics, update_every=1, chunksize=10000, passes=1)
+		
+		pickle.dump(self.dictionary, open('data/dictionary_'+self.process.dataset+'.ipy', 'wb'), pickle.HIGHEST_PROTOCOL)
+		pickle.dump(self.corpus, open('data/corpus_'+self.process.dataset+'.ipy', 'wb'), pickle.HIGHEST_PROTOCOL)
+		pickle.dump(self.terms_corpus, open('data/terms_corpus_'+self.process.dataset+'.ipy', 'wb'), pickle.HIGHEST_PROTOCOL)
+		
 
 	def train(self):
+		self.lda_model = models.ldamodel.LdaModel(corpus=self.corpus, id2word=self.dictionary, num_topics=self.num_topics, update_every=1, chunksize=10000, passes=1)
 		data_clusters_tfidf = {} 
 		data_clusters_labels = {}
 		data_clusters_w2v = {}
@@ -60,6 +65,9 @@ class Lda(object):
 
 	def load(self):
 		self.train_data = pickle.load(open('data/train_'+self.process.dataset+'.ipy', 'rb'))
+		self.dictionary = pickle.load(open('data/dictionary_'+self.process.dataset+'.ipy', 'rb'))
+		self.corpus = pickle.load(open('data/corpus_'+self.process.dataset+'.ipy', 'rb'))
+		self.terms_corpus = pickle.load(open('data/terms_corpus_'+self.process.dataset+'.ipy', 'rb'))
 
 	def test(self):
 		a = 0

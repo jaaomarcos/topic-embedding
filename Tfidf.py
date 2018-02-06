@@ -9,7 +9,7 @@ class Tfidf(object):
 		self.tfidf = []
 		
 	def run(self):
-		texts = [" ".join(str(x) for x in j) for j in self.process.data[self.process.dataset]['corpus']] 
+		texts = [" ".join(str(x) for x in j) for j in self.process.data['corpus']] 
 		document_term = TfidfVectorizer()
 		tfidf = document_term.fit_transform(texts)
 		pickle.dump(tfidf, open('data/tfidf_'+self.process.dataset+'.ipy', 'wb'), pickle.HIGHEST_PROTOCOL)	

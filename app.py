@@ -19,8 +19,8 @@ w2v.load()
 
 lda = Lda(process, tfidf, w2v, num_topics, p, limit_labels)
 #lda.topic_tfidf()
-#lda.train()
 lda.load()
+lda.train()
 lda.test()
 
 
