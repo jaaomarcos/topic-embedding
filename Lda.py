@@ -26,7 +26,6 @@ class Lda(object):
 		pickle.dump(self.corpus, open('data/corpus_'+self.process.dataset+'.ipy', 'wb'), pickle.HIGHEST_PROTOCOL)
 		pickle.dump(self.terms_corpus, open('data/terms_corpus_'+self.process.dataset+'.ipy', 'wb'), pickle.HIGHEST_PROTOCOL)
 		
-
 	def train(self):
 		self.lda_model = models.ldamodel.LdaModel(corpus=self.corpus, id2word=self.dictionary, num_topics=self.num_topics, update_every=1, chunksize=10000, passes=1)
 		data_clusters_tfidf = {} 
@@ -69,25 +68,30 @@ class Lda(object):
 		self.corpus = pickle.load(open('data/corpus_'+self.process.dataset+'.ipy', 'rb'))
 		self.terms_corpus = pickle.load(open('data/terms_corpus_'+self.process.dataset+'.ipy', 'rb'))
 
+	def evaluation(self, i):
+		for j in self.methods:
+			if len(self.dist[j]) > 0:
+				topic = sorted(self.dist[j].items(), key=operator.itemgetter(1), reverse=True)[0][0]
+				if self.targets[i] in self.train_data[topic]['labels']:
+					self.methods[j]+=1
+
 	def test(self):
-		a = 0
+		self.methods = {'cos_doc_tfidf':0,'cos_doc_w2v':0,'cos_terms_w2v':0,'euc_doc_tfidf':0,'euc_doc_w2v':0,'euc_terms_w2v':0, 'sum_weights_terms':0}
 		for i in range(int(len(self.texts_test))):
-			dist = {}
-			somas = {}
 			tfidf = self.tfidf.tfidf[i].toarray()[0]
+			self.dist = {'cos_doc_tfidf':{},'cos_doc_w2v':{},'cos_terms_w2v':{},'euc_doc_tfidf':{},'euc_doc_w2v':{},'euc_terms_w2v':{}, 'sum_weights_terms':{}}
 			for j in self.train_data:
+				self.dist['cos_doc_tfidf'][j] = cosine(tfidf, self.train_data[j]['tfidf'])
+				self.dist['cos_doc_w2v'][j] = cosine(self.w2v.w2v[i], self.train_data[j]['w2v'])
+				self.dist['cos_terms_w2v'][j] = cosine(self.w2v.w2v[i], self.train_data[j]['terms_w2v'])
+				
+				self.dist['euc_doc_tfidf'][j] = euclidean(tfidf, self.train_data[j]['tfidf'])
+				#self.dist['euc_doc_w2v'][j] = euclidean(self.w2v.w2v[i], self.train_data[j]['w2v'])
+				self.dist['euc_terms_w2v'][j] = euclidean(self.w2v.w2v[i], self.train_data[j]['terms_w2v'])
+				
 				soma = 0
-				#dist[j] = cosine(tfidf, self.train_data[j]['tfidf'])
-				#dist[j] = cosine(self.w2v.w2v[i], self.train_data[j]['w2v'])
-				dist[j] = cosine(self.w2v.w2v[i], self.train_data[j]['terms_w2v'])
-				#dist[j] = euclidean(tfidf, self.train_data[j]['tfidf'])
-				#dist[j] = euclidean(self.w2v.w2v[i], self.train_data[j]['w2v'])
-				#dist[j] = euclidean(self.w2v.w2v[i], self.train_data[j]['terms_w2v'])
 				for x in self.train_data[j]['terms']:
 					soma+= (tfidf[x[0]]*x[1])
-				somas[j] = soma
-			#topic = sorted(somas.items(), key=operator.itemgetter(1), reverse=True)[0][0]
-			topic = sorted(dist.items(), key=operator.itemgetter(1), reverse=True)[0][0]
-			if self.targets[i] in self.train_data[topic]['labels']:
-				a+=1
-		print a, int(len(self.texts_test))
+				self.dist['sum_weights_terms'][j] = soma
+			self.evaluation(i)
+		print "Num topics:", self.num_topics, self.methods
